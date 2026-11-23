@@ -1,0 +1,13 @@
+version: 1
+builder:
+  configs:
+    - platform: ios
+      scheme: swift-bundle-polyfill-Package
+    - platform: macos-spm
+      scheme: swift-bundle-polyfill-Package
+    - platform: tvos
+      scheme: swift-bundle-polyfill-Package
+    - platform: visionos
+      scheme: swift-bundle-polyfill-Package
+    - platform: watchos
+      scheme: swift-bundle-polyfill-Package

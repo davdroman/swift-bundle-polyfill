@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - "**"
+  schedule:
+    - cron: "3 3 * * 2" # 3:03 AM, every Tuesday
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: macos-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Install Mise tools
+        uses: jdx/mise-action@v3
+
+      - name: SwiftFormat Lint
+        run: hk check --all
+
+  apple:
+    name: ${{ matrix.platform }} (Swift ${{ matrix.swift }})
+    runs-on: ${{ matrix.swift == '6.4' && 'xcode-27' || 'macos-26' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - iOS
+          - mac-catalyst
+          - macOS
+          - tvOS
+          - visionOS
+          - watchOS
+        swift:
+          - "6.2"
+          - "6.3"
+          - "6.4"
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v5
+
+      - name: Select Xcode version
+        uses: mxcl/xcodebuild@v3
+        with:
+          swift: ~${{ matrix.swift }}
+          action: none
+          verbosity: verbose
+
+      - if: ${{ matrix.platform != 'macOS' && matrix.platform != 'mac-catalyst' }}
+        name: Initialize Simulator Service
+        run: xcrun simctl list
+
+      - if: ${{ matrix.platform != 'macOS' && matrix.platform != 'mac-catalyst' }}
+        name: Download Default Runtime
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 15
+          max_attempts: 3
+          command: xcodebuild -downloadPlatform ${{ matrix.platform }}
+
+      - name: Run Tests
+        uses: mxcl/xcodebuild@v3
+        with:
+          platform: ${{ matrix.platform }}
+          swift: ~${{ matrix.swift }}
+          action: test
+          verbosity: verbose
